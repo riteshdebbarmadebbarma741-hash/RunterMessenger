@@ -3,6 +3,7 @@ use crate::error::ProtocolError;
 use crate::types::{Frame, Command, AuthRequest};
 use crate::transport::Transport;
 use crate::session::Session;
+use ed25519_dalek::{VerifyingKey, Signature, Verifier};
 
 pub async fn send_frame(transport: &mut Transport, frame: &Frame) -> Result<(), ProtocolError> {
     transport.send(frame).await
@@ -33,7 +34,6 @@ pub async fn server_handshake(
     request: &Frame,
 ) -> Result<Frame, ProtocolError> {
     let server_nonce = session.issue_nonce();
-    session.check_and_store_nonce(&server_nonce)?;
     Ok(Frame::response_to(request, Command::Pong, server_nonce))
 }
 
@@ -85,9 +85,9 @@ pub async fn server_authenticate(
     }
     let identity_key_bytes: [u8; 32] = req.identity_key[..32].try_into().unwrap();
     let signature_bytes: [u8; 64] = req.signature[..64].try_into().unwrap();
-    let verifying_key = ed25519_dalek::VerifyingKey::from_bytes(&identity_key_bytes)
+    let verifying_key = VerifyingKey::from_bytes(&identity_key_bytes)
         .map_err(|_| ProtocolError::AuthenticationFailed("Invalid identity key".into()))?;
-    let signature = ed25519_dalek::Signature::from_bytes(&signature_bytes);
+    let signature = Signature::from_bytes(&signature_bytes);
     verifying_key.verify_strict(&req.server_nonce, &signature)
         .map_err(|_| ProtocolError::AuthenticationFailed("Signature verification failed".into()))?;
     session.identity_key = req.identity_key;
