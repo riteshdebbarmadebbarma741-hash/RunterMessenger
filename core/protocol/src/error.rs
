@@ -1,0 +1,52 @@
+// core/protocol/src/error.rs
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ProtocolError {
+    #[error("Encoding failed: {0}")]
+    EncodingFailed(String),
+    #[error("Decoding failed: {0}")]
+    DecodingFailed(String),
+    #[error("Invalid frame: {0}")]
+    InvalidFrame(String),
+    #[error("Invalid version: expected {0}, got {1}")]
+    InvalidVersion(u8, u8),
+    #[error("Transport error: {0}")]
+    TransportError(String),
+    #[error("Queue error: {0}")]
+    QueueError(String),
+    #[error("Crypto error: {0}")]
+    CryptoError(#[from] runter_crypto::CryptoError),
+    #[error("Timeout")]
+    Timeout,
+    #[error("Connection closed")]
+    ConnectionClosed,
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    #[error("Payload too large: {0} bytes")]
+    PayloadTooLarge(usize),
+    #[error("Queue not found")]
+    QueueNotFound,
+    #[error("Invalid queue name: {0}")]
+    InvalidQueueName(String),
+    #[error("Nonce already used")]
+    NonceAlreadyUsed,
+    #[error("Nonce expired")]
+    NonceExpired,
+    #[error("Too many queues")]
+    TooManyQueues,
+    #[error("Backpressure: queue overloaded")]
+    Backpressure,
+    #[error("Message TTL expired")]
+    MessageExpired,
+    #[error("Too many subscribers")]
+    TooManySubscribers,
+    #[error("Request-response nonce mismatch")]
+    NonceMismatch,
+    #[error("Unexpected response command: {0:?}")]
+    UnexpectedCommand(String),
+    #[error("Server shutting down")]
+    ShuttingDown,
+    #[error("Queue name already exists")]
+    QueueNameExists,
+}
