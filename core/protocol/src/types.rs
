@@ -1,0 +1,144 @@
+// core/protocol/src/types.rs
+use serde::{Deserialize, Serialize};
+use rand::RngCore;
+use crate::constants::NONCE_LENGTH;
+use std::sync::Arc;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct QueueId(pub [u8; 32]);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct MessageId(pub [u8; 16]);
+
+impl MessageId {
+    pub fn generate() -> Self {
+        let mut bytes = [0u8; 16];
+        rand::rngs::OsRng.fill_bytes(&mut bytes);
+        MessageId(bytes)
+    }
+}
+
+impl QueueId {
+    pub fn generate() -> Self {
+        let mut bytes = [0u8; 32];
+        rand::rngs::OsRng.fill_bytes(&mut bytes);
+        QueueId(bytes)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Frame {
+    pub version: u8,
+    pub command: Command,
+    pub nonce: Vec<u8>,
+    pub request_nonce: Option<Vec<u8>>,
+    pub payload: Vec<u8>,
+}
+
+impl Frame {
+    pub fn new(command: Command, payload: Vec<u8>) -> Self {
+        Frame {
+            version: crate::constants::PROTOCOL_VERSION,
+            command,
+            nonce: generate_nonce(),
+            request_nonce: None,
+            payload,
+        }
+    }
+
+    pub fn response_to(request: &Frame, command: Command, payload: Vec<u8>) -> Self {
+        Frame {
+            version: crate::constants::PROTOCOL_VERSION,
+            command,
+            nonce: generate_nonce(),
+            request_nonce: Some(request.nonce.clone()),
+            payload,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Command {
+    CreateQueue,
+    DeleteQueue,
+    SendMessage,
+    ReceiveMessage,
+    AckMessage,
+    Ping,
+    Pong,
+    Auth,
+    AuthResponse,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueConfig {
+    pub name: String,
+    pub max_size: u64,
+    pub ttl_seconds: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
+    pub id: MessageId,
+    pub queue_id: QueueId,
+    pub payload: Arc<Vec<u8>>,
+    pub timestamp: u64,
+    pub ttl: Option<u64>,
+    pub acked: bool,
+    pub expires_at: Option<u64>,
+}
+
+impl Message {
+    pub fn new(queue_id: QueueId, payload: Vec<u8>, ttl_seconds: Option<u64>) -> Self {
+        let now = now_secs();
+        Message {
+            id: MessageId::generate(),
+            queue_id,
+            payload: Arc::new(payload),
+            timestamp: now,
+            ttl: ttl_seconds,
+            acked: false,
+            expires_at: ttl_seconds.map(|t| now + t),
+        }
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.expires_at.map_or(false, |exp| now_secs() > exp)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AckRequest {
+    pub queue_id: QueueId,
+    pub message_ids: Vec<MessageId>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscribeRequest {
+    pub queue_id: QueueId,
+    pub since_message_id: Option<MessageId>,
+    pub batch_size: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthRequest {
+    pub identity_key: Vec<u8>,
+    pub signature: Vec<u8>,
+    pub server_nonce: Vec<u8>,
+}
+
+pub fn generate_nonce() -> Vec<u8> {
+    let now = now_secs();
+    let mut nonce = vec![0u8; NONCE_LENGTH];
+    nonce[..8].copy_from_slice(&now.to_be_bytes());
+    rand::rngs::OsRng.fill_bytes(&mut nonce[8..]);
+    nonce
+}
+
+pub fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
