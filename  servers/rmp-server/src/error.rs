@@ -1,4 +1,4 @@
-// servers/rmp-server/src/error.rs  
+ servers/rmp-server/src/error.rs  
 use thiserror::Error;  
   
 #[derive(Error, Debug)]  
