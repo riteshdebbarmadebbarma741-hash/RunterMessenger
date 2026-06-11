@@ -2,7 +2,7 @@
 use crate::constants::{NONCE_TIMEOUT_SECS, MAX_QUEUES_PER_CONNECTION, MAX_NONCES_PER_SESSION, NONCE_CLEANUP_BATCH};
 use crate::error::ProtocolError;
 use crate::types::now_secs;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 pub struct Session {
     pub identity_key: Vec<u8>,
@@ -12,7 +12,7 @@ pub struct Session {
     used_nonces: HashSet<Vec<u8>>,
     pub queue_count: usize,
     nonce_count_since_cleanup: usize,
-    pub issued_nonces: Vec<Vec<u8>>,
+    pub issued_nonces: VecDeque<Vec<u8>>,
 }
 
 impl Session {
@@ -26,15 +26,15 @@ impl Session {
             used_nonces: HashSet::with_capacity(MAX_NONCES_PER_SESSION),
             queue_count: 0,
             nonce_count_since_cleanup: 0,
-            issued_nonces: Vec::new(),
+            issued_nonces: VecDeque::new(),
         }
     }
 
     pub fn issue_nonce(&mut self) -> Vec<u8> {
         let nonce = crate::types::generate_nonce();
-        self.issued_nonces.push(nonce.clone());
+        self.issued_nonces.push_back(nonce.clone());
         if self.issued_nonces.len() > MAX_NONCES_PER_SESSION {
-            self.issued_nonces.remove(0);
+            self.issued_nonces.pop_front();
         }
         nonce
     }
