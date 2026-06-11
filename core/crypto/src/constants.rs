@@ -1,0 +1,13 @@
+pub const AES_KEY_SIZE: usize = 32;
+pub const AES_NONCE_SIZE: usize = 12;
+pub const AES_TAG_SIZE: usize = 16;
+pub const CURVE25519_KEY_SIZE: usize = 32;
+pub const ED25519_SIGNATURE_SIZE: usize = 64;
+pub const SHA256_OUTPUT_SIZE: usize = 32;
+pub const HKDF_OUTPUT_SIZE: usize = 32;
+pub const HMAC_OUTPUT_SIZE: usize = 32;
+pub const RATCHET_ROOT_KEY_SIZE: usize = 32;
+pub const RATCHET_CHAIN_KEY_SIZE: usize = 32;
+pub const RATCHET_MESSAGE_KEY_SIZE: usize = 32;
+pub const MAX_SKIP_MESSAGES: u64 = 1000;
+pub const HEADER_LENGTH: usize = 64;
