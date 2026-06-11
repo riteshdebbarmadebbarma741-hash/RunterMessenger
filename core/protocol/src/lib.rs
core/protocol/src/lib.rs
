@@ -1,0 +1,17 @@
+// core/protocol/src/lib.rs
+pub mod constants;
+pub mod error;
+pub mod types;
+pub mod encoding;
+pub mod transport;
+pub mod queue;
+pub mod client;
+pub mod server;
+pub mod protocol;
+pub mod session;
+
+pub use types::*;
+pub use error::ProtocolError;
+pub use client::RmpClient;
+pub use server::RmpServer;
+pub use transport::Transport;
