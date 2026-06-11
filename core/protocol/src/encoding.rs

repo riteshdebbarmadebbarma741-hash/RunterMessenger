@@ -1,0 +1,37 @@
+// core/protocol/src/encoding.rs
+use crate::constants::{MAX_FRAME_SIZE, MAX_PAYLOAD_SIZE, PROTOCOL_VERSION};
+use crate::error::ProtocolError;
+use crate::types::Frame;
+
+pub fn encode_frame(frame: &Frame) -> Result<Vec<u8>, ProtocolError> {
+    if frame.payload.len() > MAX_PAYLOAD_SIZE {
+        return Err(ProtocolError::PayloadTooLarge(frame.payload.len()));
+    }
+    let inner = bincode::serialize(frame)
+        .map_err(|e| ProtocolError::EncodingFailed(e.to_string()))?;
+    if inner.len() > MAX_FRAME_SIZE {
+        return Err(ProtocolError::InvalidFrame(
+            format!("Serialized frame size {} exceeds max {}", inner.len(), MAX_FRAME_SIZE)
+        ));
+    }
+    let len = (inner.len() as u32).to_be_bytes();
+    let mut result = Vec::with_capacity(4 + inner.len());
+    result.extend_from_slice(&len);
+    result.extend_from_slice(&inner);
+    Ok(result)
+}
+
+pub fn decode_frame(data: &[u8]) -> Result<Frame, ProtocolError> {
+    if data.is_empty() {
+        return Err(ProtocolError::DecodingFailed("Empty data".into()));
+    }
+    let frame: Frame = bincode::deserialize(data)
+        .map_err(|e| ProtocolError::DecodingFailed(e.to_string()))?;
+    if frame.version != PROTOCOL_VERSION {
+        return Err(ProtocolError::InvalidVersion(PROTOCOL_VERSION, frame.version));
+    }
+    if frame.payload.len() > MAX_PAYLOAD_SIZE {
+        return Err(ProtocolError::PayloadTooLarge(frame.payload.len()));
+    }
+    Ok(frame)
+}
